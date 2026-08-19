@@ -80,7 +80,9 @@ class WorkerTests(unittest.TestCase):
             options = (result / "app-smoke.apk").read_text()
             self.assertIn("-Djava.net.preferIPv4Stack=true", options)
             self.assertIn("-Duser.home=", options)
+            self.assertIn("--enable-native-access=ALL-UNNAMED", options)
             isolated_home = options.split("-Duser.home=", 1)[1]
+            isolated_home = isolated_home.split(" ", 1)[0]
             self.assertNotEqual(str(Path.home()), isolated_home)
             self.assertTrue(isolated_home.startswith(os.environ.get("TMPDIR", tempfile.gettempdir())))
 

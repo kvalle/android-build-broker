@@ -82,9 +82,9 @@ def terminate_remaining_group(group_id: int, grace: float = 0.2) -> None:
 
 def build_environment(java_home: str, android_sdk: str | None = None) -> dict[str, str]:
     environment = {name: value for name, value in os.environ.items() if not SECRET_ENVIRONMENT_NAME.search(name)}
-    java_home_option = f"-Duser.home={java_home}"
+    java_options = [f"-Duser.home={java_home}", "--enable-native-access=ALL-UNNAMED"]
     existing_options = environment.get("JAVA_TOOL_OPTIONS", "")
-    environment["JAVA_TOOL_OPTIONS"] = f"{existing_options} {java_home_option}".strip()
+    environment["JAVA_TOOL_OPTIONS"] = " ".join([existing_options, *java_options]).strip()
     if android_sdk:
         environment["ANDROID_HOME"] = android_sdk
         environment["ANDROID_SDK_ROOT"] = android_sdk

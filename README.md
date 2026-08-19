@@ -34,7 +34,9 @@ be guaranteed free of credentials.
 Each build also gets an isolated Java `user.home` under cplt's temporary
 directory. This prevents Gradle and Maven integrations from reading host files
 such as `~/.m2/settings.xml` without granting that file to the sandbox. Existing
-cplt-provided `JAVA_TOOL_OPTIONS` are preserved.
+cplt-provided `JAVA_TOOL_OPTIONS` are preserved. Native access is enabled for
+unnamed build-JVM modules so Android Gradle Plugin can invoke CMake on Java 25;
+cplt continues to enforce filesystem, process, and network access.
 
 The cplt sandbox deliberately receives `--allow-localhost-any`, because Gradle
 uses random loopback ports. **Target build code can reach any service listening
