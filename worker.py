@@ -19,6 +19,9 @@ from pathlib import Path
 from protocol import ProtocolError, atomic_write_json, open_regular_nofollow, read_secure_request, secure_runtime_directory, status_payload
 from source_identity import SourceIdentityError, compute_source_identity
 
+if sys.version_info < (3, 10):
+    raise SystemExit("android-build-broker worker requires Python 3.10 or newer")
+
 BUILD_TIMEOUT_SECONDS = 30 * 60
 SECRET_ENVIRONMENT_NAME = re.compile(r"(?:TOKEN|PASSWORD|PASSWD|SECRET|CREDENTIAL|PRIVATE_KEY|API_KEY|AUTH)", re.IGNORECASE)
 

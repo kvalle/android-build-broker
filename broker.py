@@ -19,6 +19,9 @@ from pathlib import Path
 from protocol import PROTOCOL_VERSION, TERMINAL_STATES, ProtocolError, atomic_write_json, read_secure_request, secure_runtime_directory, status_payload
 from worker import repository_path, terminate_process_group
 
+if sys.version_info < (3, 10):
+    raise SystemExit("android-build-broker requires Python 3.10 or newer")
+
 BROKER_ROOT = Path(__file__).resolve().parent
 TRUSTED_DEFAULT_REPOSITORY_NAME = "trene"
 RETENTION_SECONDS = 7 * 24 * 60 * 60

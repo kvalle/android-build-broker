@@ -12,6 +12,9 @@ import time
 import uuid
 from pathlib import Path
 
+if sys.version_info < (3, 10):
+    raise SystemExit("request-android-build requires Python 3.10 or newer")
+
 # This block is deliberately duplicated from source_identity.py: the installed
 # client is standalone and must compute exactly the identity checked by worker.py.
 exec(compile('''SOURCE_IDENTITY_PLACEHOLDER''', "<source_identity>", "exec"))

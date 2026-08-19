@@ -7,7 +7,7 @@ worktree.
 
 ## Requirements
 
-- macOS with Python 3, Git, and `cplt` on `PATH`
+- macOS with Python 3.10 or newer, Git, and `cplt` on `PATH`
 - A target Git repository with an executable build entrypoint
 - A build that writes one fixed repository-relative artifact
 
@@ -61,7 +61,7 @@ the post-build identity prevents such a run from being published as valid.
 Initialization shows proposed changes and asks before writing:
 
 ```sh
-python3 broker.py init-repo /absolute/path/to/repository
+./broker.py init-repo /absolute/path/to/repository
 ```
 
 It only installs or updates the generated
@@ -74,7 +74,7 @@ directories are not created during initialization.
 `trene` has trusted defaults:
 
 ```sh
-python3 broker.py serve /Users/kjetil/code/privat/trene
+./broker.py serve /Users/kjetil/code/privat/trene
 ```
 
 Those defaults are:
@@ -89,7 +89,7 @@ Every other repository requires explicit configuration. Repeat `--build-arg`
 for each argv element:
 
 ```sh
-python3 broker.py serve /path/to/repo \
+./broker.py serve /path/to/repo \
   --build-script scripts/build-apk.sh \
   --build-arg all \
   --artifact .artifacts/android/app.apk \
