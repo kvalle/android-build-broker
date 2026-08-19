@@ -51,13 +51,13 @@ class WorkerTests(unittest.TestCase):
         for script, error, timeout in cases:
             with self.subTest(error=error), tempfile.TemporaryDirectory() as temporary:
                 code, status, _result = self.run_worker(repository(Path(temporary) / "repo"), script, timeout=timeout)
-                self.assertEqual(1, code)
+                self.assertEqual(0, code)
                 self.assertEqual(error, status["errorCode"])
 
     def test_post_build_source_mutation_is_stale(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             code, status, result = self.run_worker(repository(Path(temporary) / "repo"), "mkdir -p .artifacts/android\nprintf apk > .artifacts/android/output.apk\nprintf changed > source.txt\n")
-            self.assertEqual(1, code)
+            self.assertEqual(0, code)
             self.assertEqual("stale", status["state"])
             self.assertEqual("source_changed", status["errorCode"])
             self.assertFalse((result / "app-smoke.apk").exists())
@@ -81,7 +81,7 @@ class WorkerTests(unittest.TestCase):
             worker.atomic_write_json(request, payload)
             args = argparse.Namespace(repository=str(repo), request=str(request), request_id=request_id, session_id=session,
                                       build_script="build.sh", build_arg=[], artifact=".artifacts/android/output.apk", timeout=5)
-            self.assertEqual(1, worker.run(args))
+            self.assertEqual(0, worker.run(args))
             self.assertEqual("safe", outside.read_text())
 
 

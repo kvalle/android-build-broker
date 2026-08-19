@@ -89,6 +89,23 @@ class BrokerTests(unittest.TestCase):
         self.assertIn("--build-arg=--flag", command)
         self.assertIn("--build-arg=two words", command)
 
+    def test_handled_worker_failure_is_not_overwritten(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "repo"; repo.mkdir()
+            runtime, requests, claimed, results = broker.runtime_paths(repo)
+            for directory in (requests, claimed, results):
+                directory.mkdir(parents=True, exist_ok=True)
+            request_id = str(uuid.uuid4())
+            (results / request_id).mkdir()
+            atomic_write_json(results / request_id / "status.json", {
+                "protocolVersion": 1, "requestId": request_id, "state": "failed",
+                "errorCode": "build_failed", "updatedAt": int(time.time()),
+            })
+            command = ["python3", "-c", "raise SystemExit(0)"]
+            broker.run_build(command, runtime, repo, requests, claimed, results, str(uuid.uuid4()), request_id)
+            self.assertEqual("build_failed", read_json(results / request_id / "status.json")["errorCode"])
+
 
 if __name__ == "__main__":
     unittest.main()

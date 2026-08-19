@@ -26,7 +26,7 @@ def terminal(status_path: Path, request_id: str, state: str, error_code: str | N
     if error_code:
         fields["errorCode"] = error_code
     atomic_write_json(status_path, status_payload(request_id, state, **fields))
-    return 0 if state == "passed" else 1
+    return 0
 
 
 def repository_path(repository: Path, relative: str, *, executable: bool = False) -> Path:
