@@ -11,6 +11,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import re
 from pathlib import Path
@@ -79,6 +80,14 @@ def terminate_remaining_group(group_id: int, grace: float = 0.2) -> None:
         pass
 
 
+def build_environment(java_home: str) -> dict[str, str]:
+    environment = {name: value for name, value in os.environ.items() if not SECRET_ENVIRONMENT_NAME.search(name)}
+    java_home_option = f"-Duser.home={java_home}"
+    existing_options = environment.get("JAVA_TOOL_OPTIONS", "")
+    environment["JAVA_TOOL_OPTIONS"] = f"{existing_options} {java_home_option}".strip()
+    return environment
+
+
 def run(args: argparse.Namespace) -> int:
     repository = Path(args.repository).resolve(strict=True)
     claimed = Path(args.request).absolute()
@@ -116,14 +125,16 @@ def run(args: argparse.Namespace) -> int:
             artifact.unlink()
         log_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         log_fd = open_regular_nofollow(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
-        with os.fdopen(log_fd, "wb") as log:
+        with os.fdopen(log_fd, "wb") as log, tempfile.TemporaryDirectory(
+            prefix="android-build-java-home-", dir=os.environ.get("TMPDIR")
+        ) as java_home:
             process = subprocess.Popen(
                 [os.fspath(build_script), *args.build_arg],
                 cwd=repository,
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
-                env={name: value for name, value in os.environ.items() if not SECRET_ENVIRONMENT_NAME.search(name)},
+                env=build_environment(java_home),
             )
             try:
                 exit_code = process.wait(timeout=args.timeout)

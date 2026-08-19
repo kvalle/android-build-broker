@@ -68,6 +68,22 @@ class WorkerTests(unittest.TestCase):
             self.assertEqual(0, code)
             self.assertNotIn(b"do-not-log", (result / "app-smoke.apk").read_bytes())
 
+    def test_java_uses_isolated_home_and_preserves_cplt_options(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.dict(
+            os.environ, {"JAVA_TOOL_OPTIONS": "-Djava.net.preferIPv4Stack=true"}
+        ):
+            code, status, result = self.run_worker(
+                repository(Path(temporary) / "repo"),
+                "mkdir -p .artifacts/android\nprintf '%s' \"$JAVA_TOOL_OPTIONS\" > .artifacts/android/output.apk\n",
+            )
+            self.assertEqual(0, code)
+            options = (result / "app-smoke.apk").read_text()
+            self.assertIn("-Djava.net.preferIPv4Stack=true", options)
+            self.assertIn("-Duser.home=", options)
+            isolated_home = options.split("-Duser.home=", 1)[1]
+            self.assertNotEqual(str(Path.home()), isolated_home)
+            self.assertTrue(isolated_home.startswith(os.environ.get("TMPDIR", tempfile.gettempdir())))
+
     def test_build_log_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = repository(Path(temporary) / "repo")

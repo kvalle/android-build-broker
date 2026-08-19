@@ -31,6 +31,11 @@ configured paths reject symlinks where crossed. Secret-like environment variable
 names are removed before launching the build, but arbitrary build output cannot
 be guaranteed free of credentials.
 
+Each build also gets an isolated Java `user.home` under cplt's temporary
+directory. This prevents Gradle and Maven integrations from reading host files
+such as `~/.m2/settings.xml` without granting that file to the sandbox. Existing
+cplt-provided `JAVA_TOOL_OPTIONS` are preserved.
+
 The cplt sandbox deliberately receives `--allow-localhost-any`, because Gradle
 uses random loopback ports. **Target build code can reach any service listening
 on localhost while a build runs.** No Maven settings or cache-exec access is
