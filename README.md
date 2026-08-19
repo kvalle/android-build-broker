@@ -89,7 +89,8 @@ python3 broker.py serve /path/to/repo \
 
 Only one broker can run. `.runtime/broker.json` publishes its PID, session ID,
 and canonical target path, but `.runtime/broker.lock` and its held `flock` are
-authoritative.
+authoritative. The foreground process logs concise, timestamped request and build
+lifecycle events; idle polling and heartbeat updates are intentionally silent.
 
 ## Request And Poll
 

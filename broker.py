@@ -29,6 +29,11 @@ class Stopping:
     requested = False
 
 
+def log(message: str) -> None:
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}", flush=True)
+
+
 def canonical_git_repository(value: str) -> Path:
     repository = Path(value).expanduser().resolve(strict=True)
     result = subprocess.run(["git", "-C", repository, "rev-parse", "--show-toplevel"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -68,6 +73,7 @@ def pending_requests(requests: Path) -> list[Path]:
 
 def classify_and_claim(path: Path, claimed: Path, results: Path, session_id: str, *, busy: bool) -> tuple[Path, object] | None:
     request_id = path.name[:-5]
+    log(f"Request detected: {request_id}")
     try:
         request = read_secure_request(path)
     except ProtocolError as exc:
@@ -80,14 +86,18 @@ def classify_and_claim(path: Path, claimed: Path, results: Path, session_id: str
             path.unlink()
         except OSError:
             pass
+        log(f"Request rejected: {request_id} ({exc.code})")
         return None
     destination = claim_request(path, claimed)
     if request.broker_session_id != session_id:
         publish_failure(results, request.request_id, "rejected", "broker_restarted")
+        log(f"Request rejected: {request.request_id} (broker_restarted)")
         return None
     if busy:
         publish_failure(results, request.request_id, "rejected", "busy")
+        log(f"Request rejected: {request.request_id} (busy)")
         return None
+    log(f"Request accepted: {request.request_id}")
     return destination, request
 
 
@@ -112,10 +122,12 @@ def heartbeat(root: Path, repository: Path, session_id: str) -> None:
 
 
 def run_build(command: list[str], root: Path, repository: Path, requests: Path, claimed: Path, results: Path, session_id: str, request_id: str) -> None:
+    log(f"Build started: {request_id}")
     try:
         process = subprocess.Popen(command, start_new_session=True)
     except OSError as exc:
         publish_failure(results, request_id, "failed", "worker_failed", f"Could not launch cplt: {exc}")
+        log(f"Build failed: {request_id} (worker_failed)")
         return
     deadline = time.monotonic() + 30 * 60 + 30
     while process.poll() is None:
@@ -125,10 +137,12 @@ def run_build(command: list[str], root: Path, repository: Path, requests: Path, 
         if Stopping.requested:
             terminate_process_group(process)
             publish_failure(results, request_id, "failed", "broker_stopped")
+            log(f"Build failed: {request_id} (broker_stopped)")
             return
         if time.monotonic() >= deadline:
             terminate_process_group(process)
             publish_failure(results, request_id, "failed", "build_timeout")
+            log(f"Build failed: {request_id} (build_timeout)")
             return
         time.sleep(1)
     status_path = results / request_id / "status.json"
@@ -138,6 +152,11 @@ def run_build(command: list[str], root: Path, repository: Path, requests: Path, 
         state = None
     if process.returncode != 0 or state not in TERMINAL_STATES:
         publish_failure(results, request_id, "failed", "worker_failed", f"Worker exited with status {process.returncode}")
+        log(f"Build failed: {request_id} (worker_failed)")
+        return
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    detail = f" ({status['errorCode']})" if "errorCode" in status else ""
+    log(f"Build finished: {request_id} ({status['state']}){detail}")
 
 
 def retain_results(results: Path, now: int | None = None) -> None:
@@ -203,8 +222,8 @@ def run_broker(args: argparse.Namespace) -> int:
     lock_file = acquire_lock(repository, session_id)
     signal.signal(signal.SIGINT, lambda _signum, _frame: setattr(Stopping, "requested", True))
     signal.signal(signal.SIGTERM, lambda _signum, _frame: setattr(Stopping, "requested", True))
-    print(f"Android build broker {session_id} targeting {repository}", flush=True)
-    print("Warning: builds can access arbitrary localhost services while cplt is running.", flush=True)
+    log(f"Broker started: session {session_id}, target {repository}")
+    log("Warning: builds can access arbitrary localhost services while cplt is running")
     try:
         retain_results(results)
         for old in pending_requests(requests):
@@ -234,6 +253,7 @@ def run_broker(args: argparse.Namespace) -> int:
         except FileNotFoundError:
             pass
         lock_file.close()
+        log("Broker stopped")
     return 0
 
 

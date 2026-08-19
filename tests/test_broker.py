@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import signal
@@ -105,6 +106,29 @@ class BrokerTests(unittest.TestCase):
             command = ["python3", "-c", "raise SystemExit(0)"]
             broker.run_build(command, runtime, repo, requests, claimed, results, str(uuid.uuid4()), request_id)
             self.assertEqual("build_failed", read_json(results / request_id / "status.json")["errorCode"])
+
+    def test_request_and_build_lifecycle_is_logged(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = repository(root / "repo")
+            runtime, requests, claimed, results = broker.runtime_paths(repo)
+            for directory in (requests, claimed, results):
+                directory.mkdir(parents=True, exist_ok=True)
+            session = str(uuid.uuid4())
+            path, request_id = self.queued_request(repo, session)
+            output = io.StringIO()
+            with mock.patch("sys.stdout", output):
+                broker.classify_and_claim(path, claimed, results, session, busy=False)
+                (results / request_id).mkdir(exist_ok=True)
+                atomic_write_json(results / request_id / "status.json", {
+                    "protocolVersion": 1, "requestId": request_id, "state": "passed", "updatedAt": int(time.time()),
+                })
+                broker.run_build(["python3", "-c", "raise SystemExit(0)"], runtime, repo, requests, claimed, results, session, request_id)
+            log_output = output.getvalue()
+            self.assertIn(f"Request detected: {request_id}", log_output)
+            self.assertIn(f"Request accepted: {request_id}", log_output)
+            self.assertIn(f"Build started: {request_id}", log_output)
+            self.assertIn(f"Build finished: {request_id} (passed)", log_output)
 
 
 if __name__ == "__main__":
