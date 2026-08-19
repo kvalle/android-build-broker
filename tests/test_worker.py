@@ -28,7 +28,7 @@ class WorkerTests(unittest.TestCase):
         payload["head"], payload["worktreeDigest"] = identity.head, identity.digest
         worker.atomic_write_json(request, payload)
         args = argparse.Namespace(repository=str(repo), request=str(request), request_id=request_id, session_id=session,
-                                  build_script="build.sh", build_arg=[], artifact=".artifacts/android/output.apk", timeout=timeout)
+                                  build_script="build.sh", build_arg=[], artifact=".artifacts/android/output.apk", android_sdk=None, timeout=timeout)
         code = worker.run(args)
         return code, read_json(result / "status.json"), result
 
@@ -84,6 +84,12 @@ class WorkerTests(unittest.TestCase):
             self.assertNotEqual(str(Path.home()), isolated_home)
             self.assertTrue(isolated_home.startswith(os.environ.get("TMPDIR", tempfile.gettempdir())))
 
+    def test_android_sdk_is_exported_to_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            environment = worker.build_environment("/isolated/home", "/trusted/android-sdk")
+            self.assertEqual("/trusted/android-sdk", environment["ANDROID_HOME"])
+            self.assertEqual("/trusted/android-sdk", environment["ANDROID_SDK_ROOT"])
+
     def test_build_log_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = repository(Path(temporary) / "repo")
@@ -96,7 +102,7 @@ class WorkerTests(unittest.TestCase):
             payload = read_json(request); payload["head"], payload["worktreeDigest"] = identity.head, identity.digest
             worker.atomic_write_json(request, payload)
             args = argparse.Namespace(repository=str(repo), request=str(request), request_id=request_id, session_id=session,
-                                      build_script="build.sh", build_arg=[], artifact=".artifacts/android/output.apk", timeout=5)
+                                      build_script="build.sh", build_arg=[], artifact=".artifacts/android/output.apk", android_sdk=None, timeout=5)
             self.assertEqual(0, worker.run(args))
             self.assertEqual("safe", outside.read_text())
 

@@ -101,16 +101,22 @@ def classify_and_claim(path: Path, claimed: Path, results: Path, session_id: str
     return destination, request
 
 
-def cplt_command(repository: Path, request_path: Path, request_id: str, session_id: str, build_script: str, build_args: list[str], artifact: str) -> list[str]:
+def cplt_command(repository: Path, request_path: Path, request_id: str, session_id: str, build_script: str, build_args: list[str], artifact: str, android_sdk: Path | None) -> list[str]:
     command = [
         "cplt", "--agent", "shell", "--project-dir", os.fspath(repository), "--allow-read", os.fspath(BROKER_ROOT),
+    ]
+    if android_sdk:
+        command.extend(("--allow-read", os.fspath(android_sdk)))
+    command.extend([
         "--allow-localhost-any", "exec", "--", "python3", os.fspath(BROKER_ROOT / "worker.py"),
         "--repository", os.fspath(repository), "--request", os.fspath(request_path), "--request-id", request_id,
         "--session-id", session_id, "--build-script", build_script,
-    ]
+    ])
     for argument in build_args:
         command.append(f"--build-arg={argument}")
     command.extend(("--artifact", artifact))
+    if android_sdk:
+        command.extend(("--android-sdk", os.fspath(android_sdk)))
     return command
 
 
@@ -206,14 +212,19 @@ def run_broker(args: argparse.Namespace) -> int:
     build_script = args.build_script
     build_args = args.build_arg
     artifact = args.artifact
+    android_sdk_value = args.android_sdk
     if repository.name == TRUSTED_DEFAULT_REPOSITORY_NAME:
         build_script = build_script or "scripts/build-android-smoke-apk.sh"
         build_args = build_args if build_args is not None else ["all"]
         artifact = artifact or ".artifacts/android/trene.apk"
+        android_sdk_value = android_sdk_value or "~/Library/Android/sdk"
     elif not build_script or build_args is None or not artifact:
         raise ValueError("Non-trene repositories require --build-script, at least one --build-arg, and --artifact")
     repository_path(repository, build_script, executable=True)
     repository_path(repository, artifact)
+    android_sdk = Path(android_sdk_value).expanduser().resolve(strict=True) if android_sdk_value else None
+    if android_sdk and not android_sdk.is_dir():
+        raise ValueError(f"Android SDK is not a directory: {android_sdk}")
     root, requests, claimed, results = runtime_paths(repository)
     secure_runtime_directory(root)
     for directory in (requests, claimed, results):
@@ -243,7 +254,7 @@ def run_broker(args: argparse.Namespace) -> int:
                     selected = outcome
             if selected:
                 request_path, request = selected
-                run_build(cplt_command(repository, request_path, request.request_id, session_id, build_script, build_args, artifact), root, repository, requests, claimed, results, session_id, request.request_id)
+                run_build(cplt_command(repository, request_path, request.request_id, session_id, build_script, build_args, artifact, android_sdk), root, repository, requests, claimed, results, session_id, request.request_id)
                 retain_results(results)
             else:
                 time.sleep(1)
@@ -310,6 +321,7 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--build-script")
     serve.add_argument("--build-arg", action="append")
     serve.add_argument("--artifact")
+    serve.add_argument("--android-sdk", help="trusted Android SDK directory; defaults for trene only")
     initialize = commands.add_parser("init-repo", help="install the generated request client")
     initialize.add_argument("repository")
     return value

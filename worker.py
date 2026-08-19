@@ -80,11 +80,14 @@ def terminate_remaining_group(group_id: int, grace: float = 0.2) -> None:
         pass
 
 
-def build_environment(java_home: str) -> dict[str, str]:
+def build_environment(java_home: str, android_sdk: str | None = None) -> dict[str, str]:
     environment = {name: value for name, value in os.environ.items() if not SECRET_ENVIRONMENT_NAME.search(name)}
     java_home_option = f"-Duser.home={java_home}"
     existing_options = environment.get("JAVA_TOOL_OPTIONS", "")
     environment["JAVA_TOOL_OPTIONS"] = f"{existing_options} {java_home_option}".strip()
+    if android_sdk:
+        environment["ANDROID_HOME"] = android_sdk
+        environment["ANDROID_SDK_ROOT"] = android_sdk
     return environment
 
 
@@ -134,7 +137,7 @@ def run(args: argparse.Namespace) -> int:
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
-                env=build_environment(java_home),
+                env=build_environment(java_home, args.android_sdk),
             )
             try:
                 exit_code = process.wait(timeout=args.timeout)
@@ -195,6 +198,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--build-script", required=True)
     value.add_argument("--build-arg", action="append", default=[])
     value.add_argument("--artifact", required=True)
+    value.add_argument("--android-sdk")
     value.add_argument("--timeout", type=float, default=BUILD_TIMEOUT_SECONDS)
     return value
 

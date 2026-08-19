@@ -80,6 +80,7 @@ Those defaults are:
 ```text
 scripts/build-android-smoke-apk.sh all
 artifact: .artifacts/android/trene.apk
+Android SDK: ~/Library/Android/sdk
 ```
 
 Every other repository requires explicit configuration. Repeat `--build-arg`
@@ -89,13 +90,16 @@ for each argv element:
 python3 broker.py serve /path/to/repo \
   --build-script scripts/build-apk.sh \
   --build-arg all \
-  --artifact .artifacts/android/app.apk
+  --artifact .artifacts/android/app.apk \
+  --android-sdk ~/Library/Android/sdk
 ```
 
 Only one broker can run. `.runtime/broker.json` publishes its PID, session ID,
 and canonical target path, but `.runtime/broker.lock` and its held `flock` are
 authoritative. The foreground process logs concise, timestamped request and build
 lifecycle events; idle polling and heartbeat updates are intentionally silent.
+The trusted Android SDK path is validated at startup, exposed read-only to cplt,
+and exported to the build as `ANDROID_HOME` and `ANDROID_SDK_ROOT`.
 
 ## Request And Poll
 

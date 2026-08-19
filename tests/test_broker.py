@@ -84,11 +84,13 @@ class BrokerTests(unittest.TestCase):
         self.assertIsNotNone(process.returncode)
 
     def test_cplt_command_places_flags_before_exec_and_preserves_arguments(self) -> None:
-        command = broker.cplt_command(Path("/repo"), Path("/repo/request.json"), str(uuid.uuid4()), str(uuid.uuid4()), "build", ["--flag", "two words"], "out.apk")
+        command = broker.cplt_command(Path("/repo"), Path("/repo/request.json"), str(uuid.uuid4()), str(uuid.uuid4()), "build", ["--flag", "two words"], "out.apk", Path("/android-sdk"))
         exec_index = command.index("exec")
         self.assertLess(command.index("--allow-localhost-any"), exec_index)
         self.assertIn("--build-arg=--flag", command)
         self.assertIn("--build-arg=two words", command)
+        self.assertIn("/android-sdk", command)
+        self.assertLess(command.index("/android-sdk"), exec_index)
 
     def test_handled_worker_failure_is_not_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
