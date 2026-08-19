@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import stat
@@ -53,11 +54,14 @@ def atomic_json(path: Path, value: object, exclusive: bool = False) -> None:
             pass
 
 
-def main() -> None:
+def repository_root() -> Path:
     result = subprocess.run(["git", "rev-parse", "--show-toplevel"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode:
         fail("run this command inside a Git repository")
-    repository = Path(result.stdout.strip()).resolve()
+    return Path(result.stdout.strip()).resolve()
+
+
+def broker_heartbeat(repository: Path) -> dict[str, object]:
     root = repository / ".artifacts" / "android"
     heartbeat_path = root / "heartbeat.json"
     try:
@@ -73,6 +77,26 @@ def main() -> None:
         fail("broker heartbeat is stale")
     if heartbeat.get("targetRepository") != str(repository):
         fail("broker heartbeat targets a different repository")
+    return heartbeat
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Request an Android build from the local broker")
+    parser.add_argument("--broker-status", action="store_true", help="report whether this repository's broker is running without requesting a build")
+    args = parser.parse_args()
+    repository = repository_root()
+    heartbeat = broker_heartbeat(repository)
+    if args.broker_status:
+        print(json.dumps({
+            "running": True,
+            "brokerSessionId": heartbeat["brokerSessionId"],
+            "pid": heartbeat["pid"],
+            "updatedAt": heartbeat["updatedAt"],
+        }, separators=(",", ":")))
+        return
+    root = repository / ".artifacts" / "android"
+    now = int(time.time())
+    session = heartbeat["brokerSessionId"]
     identity = compute_source_identity(repository)
     request_id = str(uuid.uuid4())
     requests = root / "requests"

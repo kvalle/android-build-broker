@@ -111,6 +111,17 @@ With the foreground broker running, execute in the target repository:
 python3 scripts/request-android-build.py
 ```
 
+To check for a fresh, correctly targeted broker heartbeat without computing
+source identity or creating a build request:
+
+```sh
+scripts/request-android-build.py --broker-status
+```
+
+Success returns exit code 0 and JSON containing `running: true`, session ID, PID,
+and heartbeat timestamp. Missing, stale, malformed, or wrong-repository heartbeat
+data produces a non-zero exit code and an error on stderr.
+
 The client prints JSON containing `requestId` and repository-relative
 `statusPath`. Poll that file; no separate wait command exists:
 
