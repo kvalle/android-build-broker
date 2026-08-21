@@ -23,7 +23,10 @@ if sys.version_info < (3, 10):
     raise SystemExit("android-build-broker requires Python 3.10 or newer")
 
 BROKER_ROOT = Path(__file__).resolve().parent
-TRUSTED_DEFAULT_REPOSITORY_NAME = "trene"
+DEFAULT_BUILD_SCRIPT = "scripts/build-android-smoke-apk.sh"
+DEFAULT_BUILD_ARGS = ("all",)
+DEFAULT_ARTIFACT = ".artifacts/android/trene.apk"
+DEFAULT_ANDROID_SDK = "~/Library/Android/sdk"
 RETENTION_SECONDS = 7 * 24 * 60 * 60
 RETENTION_COUNT = 20
 
@@ -212,17 +215,10 @@ def run_broker(args: argparse.Namespace) -> int:
     for program in ("python3", "git", "cplt"):
         require_program(program)
     repository = canonical_git_repository(args.repository)
-    build_script = args.build_script
-    build_args = args.build_arg
-    artifact = args.artifact
-    android_sdk_value = args.android_sdk
-    if repository.name == TRUSTED_DEFAULT_REPOSITORY_NAME:
-        build_script = build_script or "scripts/build-android-smoke-apk.sh"
-        build_args = build_args if build_args is not None else ["all"]
-        artifact = artifact or ".artifacts/android/trene.apk"
-        android_sdk_value = android_sdk_value or "~/Library/Android/sdk"
-    elif not build_script or build_args is None or not artifact:
-        raise ValueError("Non-trene repositories require --build-script, at least one --build-arg, and --artifact")
+    build_script = args.build_script or DEFAULT_BUILD_SCRIPT
+    build_args = args.build_arg if args.build_arg is not None else list(DEFAULT_BUILD_ARGS)
+    artifact = args.artifact or DEFAULT_ARTIFACT
+    android_sdk_value = args.android_sdk or DEFAULT_ANDROID_SDK
     repository_path(repository, build_script, executable=True)
     repository_path(repository, artifact)
     android_sdk = Path(android_sdk_value).expanduser().resolve(strict=True) if android_sdk_value else None
@@ -331,7 +327,7 @@ def parser() -> argparse.ArgumentParser:
     serve.add_argument("--build-script")
     serve.add_argument("--build-arg", action="append")
     serve.add_argument("--artifact")
-    serve.add_argument("--android-sdk", help="trusted Android SDK directory; defaults for trene only")
+    serve.add_argument("--android-sdk", help="trusted Android SDK directory")
     initialize = commands.add_parser("init-repo", help="install the generated request client")
     initialize.add_argument("repository")
     return value

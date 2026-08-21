@@ -71,21 +71,8 @@ directories are not created during initialization.
 
 ## Run
 
-`trene` has trusted defaults:
-
-```sh
-./broker.py serve /Users/kjetil/code/privat/trene
-```
-
-Those defaults are:
-
-```text
-scripts/build-android-smoke-apk.sh all
-artifact: .artifacts/android/trene.apk
-Android SDK: ~/Library/Android/sdk
-```
-
-Every other repository requires explicit configuration. Repeat `--build-arg`
+The broker has defaults for its standard Android smoke-build convention. Override
+them when a repository uses different paths or arguments. Repeat `--build-arg`
 for each argv element:
 
 ```sh

@@ -92,6 +92,11 @@ class BrokerTests(unittest.TestCase):
         self.assertIn("/android-sdk", command)
         self.assertLess(command.index("/android-sdk"), exec_index)
 
+    def test_default_build_configuration_is_repository_relative(self) -> None:
+        self.assertFalse(Path(broker.DEFAULT_BUILD_SCRIPT).is_absolute())
+        self.assertFalse(Path(broker.DEFAULT_ARTIFACT).is_absolute())
+        self.assertEqual(("all",), broker.DEFAULT_BUILD_ARGS)
+
     def test_handled_worker_failure_is_not_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
